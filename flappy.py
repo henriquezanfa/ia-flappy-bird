@@ -1,5 +1,7 @@
-import pygame
 import random
+import contextlib
+with contextlib.redirect_stdout(None):
+    import pygame
 from pygame.locals import *
 
 SCREEN_WIDTH = 400
@@ -144,89 +146,87 @@ def busca_gulosa(pipe_distance, y_bird, y_pipe, bird_speed):
 
 
 def heuristica(y_bird, y_pipe, bird_speed):
-    pipe_top = y_pipe - PIPE_GAP
-    pipe_center = y_pipe - (PIPE_GAP / 2) 
-    pipe_bottom = y_pipe
+    pipe_center = y_pipe - (PIPE_GAP / 2)
 
     if_bump = y_bird - SPEED 
     if_not_bump = y_bird + bird_speed
 
-    if if_bump > pipe_center:
+    if if_bump >= pipe_center  - 17:
         a = (if_bump, True)
     else:
-        if if_bump < pipe_top:
-            a = (if_not_bump, False)
-        elif if_not_bump > pipe_bottom:
-            a = (if_bump, True)
-        else:
-            a = (if_not_bump, False)
+        a = (if_not_bump, False)
 
     return a
 
+def main():
+    acoes = []
+    acao = False
+    pontuacao = 0
 
-acoes = []
-acao = False
-pontuacao = 0
+    while True:
+        clock.tick(30)
 
-while True:
-    clock.tick(30)
+        y_bird = bird_group.sprites()[0].rect[1]
+        y_pipe = pipe_group.sprites()[0].rect[1]
+        pipe_distance = pipe_group.sprites()[0].rect[0] - SCREEN_WIDTH / 2 + (PIPE_WIDTH )
+        if(pipe_distance <= 0):
+            pipe_distance = pipe_group.sprites()[2].rect[0] - SCREEN_WIDTH / 2 + (PIPE_WIDTH)
+            y_pipe = pipe_group.sprites()[2].rect[1]
 
-    y_bird = bird_group.sprites()[0].rect[1]
-    y_pipe = pipe_group.sprites()[0].rect[1]
-    pipe_distance = pipe_group.sprites()[0].rect[0] - SCREEN_WIDTH / 2 + (PIPE_WIDTH )
-    if(pipe_distance <= 0):
-        pipe_distance = pipe_group.sprites()[2].rect[0] - SCREEN_WIDTH / 2 + (PIPE_WIDTH)
-        y_pipe = pipe_group.sprites()[2].rect[1]
+        if(len(acoes) == 0):
+            acoes = busca_gulosa(pipe_distance, y_bird, y_pipe, bird.speed)
 
-    if(len(acoes) == 0):
-        acoes = busca_gulosa(pipe_distance, y_bird, y_pipe, bird.speed)
+        if(len(acoes) != 0):
+            acao = acoes.pop(0)
 
-    if(len(acoes) != 0):
-        acao = acoes.pop(0)
+        if acao:
+            bird.bump()
 
-    if acao:
-        bird.bump()
+        for event in pygame.event.get():
+            if event.type == QUIT:
+                pygame.quit()
 
-    for event in pygame.event.get():
-        if event.type == QUIT:
-            pygame.quit()
+            if event.type == KEYDOWN:
+                if event.key == K_SPACE:
+                    bird.bump()
 
-        if event.type == KEYDOWN:
-            if event.key == K_SPACE:
-                bird.bump()
+        screen.blit(BACKGROUND, (0, 0))
 
-    screen.blit(BACKGROUND, (0, 0))
+        if is_off_screen(ground_group.sprites()[0]):
+            ground_group.remove(ground_group.sprites()[0])
 
-    if is_off_screen(ground_group.sprites()[0]):
-        ground_group.remove(ground_group.sprites()[0])
+            new_ground = Ground(GROUND_WIDTH - 20)
+            ground_group.add(new_ground)
 
-        new_ground = Ground(GROUND_WIDTH - 20)
-        ground_group.add(new_ground)
+        if is_off_screen(pipe_group.sprites()[0]):
+            pipe_group.remove(pipe_group.sprites()[0])
+            pipe_group.remove(pipe_group.sprites()[0])
 
-    if is_off_screen(pipe_group.sprites()[0]):
-        pipe_group.remove(pipe_group.sprites()[0])
-        pipe_group.remove(pipe_group.sprites()[0])
+            pipes = get_random_pipes(SCREEN_WIDTH * 2)
 
-        pipes = get_random_pipes(SCREEN_WIDTH * 2)
+            pipe_group.add(pipes[0])
+            pipe_group.add(pipes[1])
+            pontuacao += 1
 
-        pipe_group.add(pipes[0])
-        pipe_group.add(pipes[1])
-        pontuacao += 1
+        bird_group.update()
+        ground_group.update()
+        pipe_group.update()
 
-    bird_group.update()
-    ground_group.update()
-    pipe_group.update()
+        bird_group.draw(screen)
+        pipe_group.draw(screen)
+        ground_group.draw(screen)
 
-    bird_group.draw(screen)
-    pipe_group.draw(screen)
-    ground_group.draw(screen)
+        pygame.display.update()
 
-    pygame.display.update()
+        if (pygame.sprite.groupcollide(bird_group, ground_group, False, False, pygame.sprite.collide_mask) or
+        pygame.sprite.groupcollide(bird_group, pipe_group, False, False, pygame.sprite.collide_mask)):
 
-    if (pygame.sprite.groupcollide(bird_group, ground_group, False, False, pygame.sprite.collide_mask) or
-       pygame.sprite.groupcollide(bird_group, pipe_group, False, False, pygame.sprite.collide_mask)):
+            print(f"{pontuacao}")
+            # Game over
+            break
 
-        print("Altura da colisão:", bird_group.sprites()[0].rect[1])
-        print("Pontuação:", pontuacao)
-        # Game over
-        break
+    # sys.stderr.write(str(pontuacao))
+
+if __name__ == '__main__':
+    main()
+    
